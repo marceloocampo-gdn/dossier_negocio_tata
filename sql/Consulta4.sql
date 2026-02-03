@@ -1,0 +1,5 @@
+SELECT
+    TO_CHAR(
+        DATE(CONVERT_TIMEZONE('America/Montevideo', CURRENT_TIMESTAMP())),
+        'DD/MM/YYYY'
+    ) AS FECHA_ACTUAL;

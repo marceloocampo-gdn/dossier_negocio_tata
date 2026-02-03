@@ -1,0 +1,49 @@
+default_profile: prod
+
+shared:
+  google:
+    service_account_json: "secrets/google_sa.json"
+    sheet_url: "https://docs.google.com/spreadsheets/d/1fZ8VHnFLu-2mJ9XoFJUNHCwJkCtt75tch3_T8hNdv7U/edit?" ## aca va la url de la hoja de google sheets
+
+
+### Este es el mail que debe ser editor en la hoja de Google = gsheet-runner@export-snow-to-drive.iam.gserviceaccount.com
+
+  snowflake:
+    service_account_json: "secrets/snowflake_sa.json"
+
+  queries:
+    - file: "sql/Consulta.sql"   ## aca el nombre del archivo sql y la carpeta donde esta
+      worksheet: "Detalle_locales"    ## aca el nombre de la hoja en google sheets
+      range: "A2"             ## aca el desde que celda queres que pegue el resultado del query (se puede retir cuanto se quiera dentro del mismo archivo)
+
+    - file: "sql/Consulta1.sql" 
+      worksheet: "General_tata"
+      range: "A2"
+
+    - file: "sql/Consulta2.sql"
+      worksheet: "Historico_TP"
+      range: "A2"
+
+    - file: "sql/Consulta3.sql"
+      worksheet: "Venta"
+      range: "A2"
+
+    - file: "sql/Consulta4.sql"
+      worksheet: "Fecha"
+      range: "A2"
+
+    - file: "sql/Consulta5.sql"
+      worksheet: "Comportamental_cliente"
+      range: "A2"
+
+    - file: "sql/Consulta6.sql"
+      worksheet: "Venta_detalle_loc"
+      range: "A2"
+
+  
+profiles:
+  test:
+    env: test
+
+  prod:
+    env: prod
