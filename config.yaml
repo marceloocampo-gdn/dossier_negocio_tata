@@ -37,9 +37,21 @@ shared:
       range: "A2"
 
     - file: "sql/Consulta6.sql"
-      worksheet: "Venta_detalle_loc"
+      worksheet: "Venta_clie"
       range: "A2"
 
+    - file: "sql/Consulta7.sql"
+      worksheet: "Historico_porcentaje_fidelizado"
+      range: "A2"
+  
+
+    - file: "sql/Consulta8.sql"
+      worksheet: "Clientes_x_hora"
+      range: "A2"
+
+    - file: "sql/Consulta9.sql"
+      worksheet: "Venta_clie_loc"
+      range: "A2"
   
 profiles:
   test:
