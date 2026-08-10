@@ -6,7 +6,9 @@ WITH base AS (
         V.VNTA_IMPORTE_SIN_IVA,
         D.DEPT_NAME,
         C.CLASS_NAME,
-        SC.SUB_NAME
+        SC.SUB_NAME,
+        LAA.ORIN                        AS ARTICULO_ID,
+        LAA.ARTC_ARTC_DESC              AS ARTICULO_DESC
     FROM 
         MSTRDB.DWH.FT_VENTAS V
         INNER JOIN MSTRDB.DWH.FT_FDLN_MOVIMIENTOS M ON V.TICKET = M.TICKET
@@ -27,7 +29,6 @@ WITH base AS (
           )
 ),
 
--- TOTAL CLIENTES DE TODA LA CADENA (sin filtro de categoria ni local)
 total_cadena AS (
     SELECT
         COUNT(DISTINCT CASE
@@ -49,12 +50,11 @@ SELECT
     b.DEPT_NAME                         AS DEPARTAMENTO,
     NULL                                AS CLASE,
     NULL                                AS SUBCLASE,
+    NULL                                AS ARTICULO,
 
-    -- Total clientes cadena (denominador)
     t.TOTAL_SOCIOS_ACTUAL,
     t.TOTAL_SOCIOS_AA,
 
-    -- Periodo actual
     COUNT(DISTINCT CASE
         WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, CURRENT_DATE - 1)
                                AND CURRENT_DATE - 1
@@ -70,7 +70,6 @@ SELECT
                                AND CURRENT_DATE - 1
         THEN b.VNTA_IMPORTE_SIN_IVA ELSE 0 END), 2) AS MONTO_TOTAL_ACTUAL,
 
-    -- Periodo año anterior
     COUNT(DISTINCT CASE
         WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, DATEADD('year', -1, CURRENT_DATE - 1))
                                AND DATEADD('year', -1, CURRENT_DATE - 1)
@@ -85,6 +84,7 @@ SELECT
         WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, DATEADD('year', -1, CURRENT_DATE - 1))
                                AND DATEADD('year', -1, CURRENT_DATE - 1)
         THEN b.VNTA_IMPORTE_SIN_IVA ELSE 0 END), 2) AS MONTO_TOTAL_AA,
+
     COUNT(DISTINCT CASE
         WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, CURRENT_DATE - 1)
                                AND CURRENT_DATE - 1
@@ -93,7 +93,7 @@ SELECT
         WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, DATEADD('year', -1, CURRENT_DATE - 1))
                                AND DATEADD('year', -1, CURRENT_DATE - 1)
         THEN b.SOCI_SOCI_ID END)        AS VAR_SOCIOS_ABS,
-    -- Variacion socios %
+
     ROUND(
         (COUNT(DISTINCT CASE
             WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, CURRENT_DATE - 1)
@@ -109,7 +109,6 @@ SELECT
             THEN b.SOCI_SOCI_ID END), 0) * 100
     , 1)                                AS VAR_SOCIOS_PCT,
 
-    -- Variacion monto %
     ROUND(
         (SUM(CASE
             WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, CURRENT_DATE - 1)
@@ -125,7 +124,6 @@ SELECT
             THEN b.VNTA_IMPORTE_SIN_IVA ELSE 0 END), 0) * 100
     , 1)                                AS VAR_MONTO_PCT,
 
-    -- Penetracion actual
     ROUND(
         COUNT(DISTINCT CASE
             WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, CURRENT_DATE - 1)
@@ -146,6 +144,7 @@ SELECT
     b.DEPT_NAME                         AS DEPARTAMENTO,
     b.CLASS_NAME                        AS CLASE,
     NULL                                AS SUBCLASE,
+    NULL                                AS ARTICULO,
     t.TOTAL_SOCIOS_ACTUAL,
     t.TOTAL_SOCIOS_AA,
 
@@ -186,7 +185,7 @@ SELECT
     - COUNT(DISTINCT CASE
         WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, DATEADD('year', -1, CURRENT_DATE - 1))
                                AND DATEADD('year', -1, CURRENT_DATE - 1)
-        THEN b.SOCI_SOCI_ID END)        AS VAR_SOCIOS_ABS,    
+        THEN b.SOCI_SOCI_ID END)        AS VAR_SOCIOS_ABS,
 
     ROUND(
         (COUNT(DISTINCT CASE
@@ -238,6 +237,7 @@ SELECT
     b.DEPT_NAME                         AS DEPARTAMENTO,
     b.CLASS_NAME                        AS CLASE,
     b.SUB_NAME                          AS SUBCLASE,
+    NULL                                AS ARTICULO,
     t.TOTAL_SOCIOS_ACTUAL,
     t.TOTAL_SOCIOS_AA,
 
@@ -270,6 +270,7 @@ SELECT
         WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, DATEADD('year', -1, CURRENT_DATE - 1))
                                AND DATEADD('year', -1, CURRENT_DATE - 1)
         THEN b.VNTA_IMPORTE_SIN_IVA ELSE 0 END), 2) AS MONTO_TOTAL_AA,
+
     COUNT(DISTINCT CASE
         WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, CURRENT_DATE - 1)
                                AND CURRENT_DATE - 1
@@ -278,6 +279,7 @@ SELECT
         WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, DATEADD('year', -1, CURRENT_DATE - 1))
                                AND DATEADD('year', -1, CURRENT_DATE - 1)
         THEN b.SOCI_SOCI_ID END)        AS VAR_SOCIOS_ABS,
+
     ROUND(
         (COUNT(DISTINCT CASE
             WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, CURRENT_DATE - 1)
@@ -320,4 +322,98 @@ FROM base b
 CROSS JOIN total_cadena t
 GROUP BY b.DEPT_NAME, b.CLASS_NAME, b.SUB_NAME, t.TOTAL_SOCIOS_ACTUAL, t.TOTAL_SOCIOS_AA
 
-ORDER BY DEPARTAMENTO DESC, CLASE DESC, SUBCLASE DESC;
+UNION ALL
+
+-- NIVEL ARTICULO  (nuevo)
+SELECT
+    'ARTICULO'                          AS NIVEL,
+    b.DEPT_NAME                         AS DEPARTAMENTO,
+    b.CLASS_NAME                        AS CLASE,
+    b.SUB_NAME                          AS SUBCLASE,
+    b.ARTICULO_DESC                     AS ARTICULO,
+    t.TOTAL_SOCIOS_ACTUAL,
+    t.TOTAL_SOCIOS_AA,
+
+    COUNT(DISTINCT CASE
+        WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, CURRENT_DATE - 1)
+                               AND CURRENT_DATE - 1
+        THEN b.SOCI_SOCI_ID END)        AS SOCIOS_UNICOS_ACTUAL,
+
+    COUNT(DISTINCT CASE
+        WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, CURRENT_DATE - 1)
+                               AND CURRENT_DATE - 1
+        THEN b.TICKET END)              AS TICKETS_UNICOS_ACTUAL,
+
+    ROUND(SUM(CASE
+        WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, CURRENT_DATE - 1)
+                               AND CURRENT_DATE - 1
+        THEN b.VNTA_IMPORTE_SIN_IVA ELSE 0 END), 2) AS MONTO_TOTAL_ACTUAL,
+
+    COUNT(DISTINCT CASE
+        WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, DATEADD('year', -1, CURRENT_DATE - 1))
+                               AND DATEADD('year', -1, CURRENT_DATE - 1)
+        THEN b.SOCI_SOCI_ID END)        AS SOCIOS_UNICOS_AA,
+
+    COUNT(DISTINCT CASE
+        WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, DATEADD('year', -1, CURRENT_DATE - 1))
+                               AND DATEADD('year', -1, CURRENT_DATE - 1)
+        THEN b.TICKET END)              AS TICKETS_UNICOS_AA,
+
+    ROUND(SUM(CASE
+        WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, DATEADD('year', -1, CURRENT_DATE - 1))
+                               AND DATEADD('year', -1, CURRENT_DATE - 1)
+        THEN b.VNTA_IMPORTE_SIN_IVA ELSE 0 END), 2) AS MONTO_TOTAL_AA,
+
+    COUNT(DISTINCT CASE
+        WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, CURRENT_DATE - 1)
+                               AND CURRENT_DATE - 1
+        THEN b.SOCI_SOCI_ID END)
+    - COUNT(DISTINCT CASE
+        WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, DATEADD('year', -1, CURRENT_DATE - 1))
+                               AND DATEADD('year', -1, CURRENT_DATE - 1)
+        THEN b.SOCI_SOCI_ID END)        AS VAR_SOCIOS_ABS,
+
+    ROUND(
+        (COUNT(DISTINCT CASE
+            WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, CURRENT_DATE - 1)
+                                   AND CURRENT_DATE - 1
+            THEN b.SOCI_SOCI_ID END)
+        - COUNT(DISTINCT CASE
+            WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, DATEADD('year', -1, CURRENT_DATE - 1))
+                                   AND DATEADD('year', -1, CURRENT_DATE - 1)
+            THEN b.SOCI_SOCI_ID END))
+        / NULLIF(COUNT(DISTINCT CASE
+            WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, DATEADD('year', -1, CURRENT_DATE - 1))
+                                   AND DATEADD('year', -1, CURRENT_DATE - 1)
+            THEN b.SOCI_SOCI_ID END), 0) * 100
+    , 1)                                AS VAR_SOCIOS_PCT,
+
+    ROUND(
+        (SUM(CASE
+            WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, CURRENT_DATE - 1)
+                                   AND CURRENT_DATE - 1
+            THEN b.VNTA_IMPORTE_SIN_IVA ELSE 0 END)
+        - SUM(CASE
+            WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, DATEADD('year', -1, CURRENT_DATE - 1))
+                                   AND DATEADD('year', -1, CURRENT_DATE - 1)
+            THEN b.VNTA_IMPORTE_SIN_IVA ELSE 0 END))
+        / NULLIF(SUM(CASE
+            WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, DATEADD('year', -1, CURRENT_DATE - 1))
+                                   AND DATEADD('year', -1, CURRENT_DATE - 1)
+            THEN b.VNTA_IMPORTE_SIN_IVA ELSE 0 END), 0) * 100
+    , 1)                                AS VAR_MONTO_PCT,
+
+    -- Penetracion del articulo sobre el TOTAL de la cadena
+    ROUND(
+        COUNT(DISTINCT CASE
+            WHEN b.TIEM_DIA_ID BETWEEN DATEADD('day', -30, CURRENT_DATE - 1)
+                                   AND CURRENT_DATE - 1
+            THEN b.SOCI_SOCI_ID END)
+        / NULLIF(t.TOTAL_SOCIOS_ACTUAL, 0) * 100
+    , 1)                                AS PCT_PENETRACION_ACTUAL
+
+FROM base b
+CROSS JOIN total_cadena t
+GROUP BY b.DEPT_NAME, b.CLASS_NAME, b.SUB_NAME, b.ARTICULO_ID, b.ARTICULO_DESC, t.TOTAL_SOCIOS_ACTUAL, t.TOTAL_SOCIOS_AA
+
+ORDER BY DEPARTAMENTO DESC, CLASE DESC, SUBCLASE DESC, ARTICULO DESC;
